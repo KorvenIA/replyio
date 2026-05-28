@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { supabase } from "@/lib/supabase";
 
 interface Ticket {
   id: string;
@@ -14,7 +15,6 @@ interface Ticket {
   date: string;
 }
 
-// 10 realistic fake rows with mixed statuses and priorities
 const initialTickets: Ticket[] = [
   { id: 'TK-001', student: 'Sarah Johnson', email: 'sarah.johnson@email.com', subject: 'How to access course materials?', status: 'Open', priority: 'High', date: '2 hours ago' },
   { id: 'TK-002', student: 'Miguel Rodriguez', email: 'miguel.rodriguez@email.com', subject: 'Certificate generation issue', status: 'In Progress', priority: 'Medium', date: '4 hours ago' },
@@ -31,27 +31,31 @@ const initialTickets: Ticket[] = [
 export default function TicketsList() {
   const router = useRouter();
 
-  // Core List State
   const [tickets, setTickets] = useState<Ticket[]>(initialTickets);
-
-  // Filters State
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'All' | 'Open' | 'In Progress' | 'Resolved'>('All');
   const [priorityFilter, setPriorityFilter] = useState<'All' | 'High' | 'Medium' | 'Low'>('All');
-
-  // Pagination State (5 items per page)
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 5;
 
-  // New Ticket Slide-over State
   const [isNewTicketOpen, setIsNewTicketOpen] = useState(false);
   const [newStudent, setNewStudent] = useState('');
   const [newEmail, setNewEmail] = useState('');
   const [newSubject, setNewSubject] = useState('');
   const [newPriority, setNewPriority] = useState<'High' | 'Medium' | 'Low'>('Medium');
   const [showToast, setShowToast] = useState(false);
+  const [userEmail, setUserEmail] = useState<string>("");
 
-  // Filter Tickets dynamically
+  useEffect(() => {
+    const getUser = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user?.email) {
+        setUserEmail(session.user.email);
+      }
+    };
+    getUser();
+  }, []);
+
   const filteredTickets = tickets.filter((ticket) => {
     const matchesSearch =
       ticket.student.toLowerCase().includes(search.toLowerCase()) ||
@@ -62,10 +66,8 @@ export default function TicketsList() {
     return matchesSearch && matchesStatus && matchesPriority;
   });
 
-  // Calculate pages
   const totalPages = Math.max(1, Math.ceil(filteredTickets.length / ITEMS_PER_PAGE));
 
-  // Reset to page 1 if current page becomes out of bounds after filtering
   useEffect(() => {
     if (currentPage > totalPages) {
       setCurrentPage(1);
@@ -80,26 +82,26 @@ export default function TicketsList() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'Open':
-        return 'bg-red-50 text-red-700 border border-red-200';
+        return 'bg-red-50 text-red-700 border border-red-100';
       case 'In Progress':
-        return 'bg-yellow-50 text-yellow-700 border border-yellow-200';
+        return 'bg-amber-50 text-amber-700 border border-amber-100';
       case 'Resolved':
-        return 'bg-green-50 text-green-700 border border-green-200';
+        return 'bg-emerald-50 text-emerald-700 border border-emerald-100';
       default:
-        return 'bg-gray-50 text-gray-700 border border-gray-200';
+        return 'bg-gray-50 text-gray-600 border border-gray-100';
     }
   };
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case 'High':
-        return 'text-red-600 font-semibold';
+        return 'text-red-600 font-medium';
       case 'Medium':
-        return 'text-yellow-600 font-semibold';
+        return 'text-amber-600 font-medium';
       case 'Low':
-        return 'text-gray-600';
+        return 'text-gray-500';
       default:
-        return 'text-gray-600';
+        return 'text-gray-500';
     }
   };
 
@@ -122,14 +124,12 @@ export default function TicketsList() {
 
     setTickets([newTicket, ...tickets]);
 
-    // Reset Form
     setNewStudent('');
     setNewEmail('');
     setNewSubject('');
     setNewPriority('Medium');
     setIsNewTicketOpen(false);
 
-    // Show Success Toast
     setShowToast(true);
     setTimeout(() => {
       setShowToast(false);
@@ -137,79 +137,64 @@ export default function TicketsList() {
   };
 
   return (
-    <div className="flex h-screen bg-white font-sans text-gray-900 overflow-hidden">
+    <div className="flex h-screen bg-[#FFFFFF] text-[#1A1A1A] font-sans antialiased overflow-hidden">
       {/* Sidebar */}
-      <aside className="w-64 bg-[#1A1A2E] text-white flex flex-col flex-shrink-0">
+      <aside className="w-60 bg-[#F7F7F7] border-r border-[#E5E5E5] flex flex-col flex-shrink-0">
         {/* Logo */}
-        <div className="px-6 py-8 border-b border-[#2A2A3E]">
-          <Link href="/dashboard" className="text-2xl font-bold text-blue-400 hover:text-blue-300 transition-colors">
-            Replyio
-          </Link>
+        <div className="px-6 py-5 border-b border-[#E5E5E5]">
+          <span className="text-lg font-semibold tracking-tight text-[#1A1A1A]">Replyio</span>
         </div>
-
         {/* Navigation */}
-        <nav className="flex-1 px-6 py-8">
-          <div className="space-y-4">
-            {/* Dashboard Link */}
-            <Link href="/dashboard" className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-300 hover:bg-[#2A2A3E] transition-colors">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-3m0 0l7-4 7 4M5 9v10a1 1 0 001 1h12a1 1 0 001-1V9m-9 4v4m0 0v4m0-4h4m-4 0H9" />
+        <nav className="flex-1 px-4 py-6">
+          <div className="space-y-1">
+            <Link href="/dashboard" className="flex items-center gap-2.5 px-3 py-2 rounded-md text-gray-600 hover:bg-gray-100 hover:text-[#1A1A1A] text-sm font-medium transition-colors">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2H6a2 2 0 01-2-2v-4zM14 16a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 01-2-2v-4z" />
               </svg>
               Dashboard
             </Link>
-
-            {/* Tickets Link */}
-            <Link href="/dashboard/tickets" className="flex items-center gap-3 px-4 py-3 rounded-lg bg-blue-600 text-white font-medium transition-colors">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+            <Link href="/dashboard/tickets" className="flex items-center gap-2.5 px-3 py-2 rounded-md bg-[#EFF6FF] text-[#2563EB] text-sm font-medium transition-colors">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
               </svg>
               Tickets
             </Link>
-
-            {/* Knowledge Base Link */}
-            <Link href="/dashboard/knowledge" className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-300 hover:bg-[#2A2A3E] transition-colors">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C6.5 6.253 2 10.998 2 17.001c0 5.563 3.1 10.419 7.574 13.069.3.23.630.189.855-.02a.5.5 0 00.11-.557l-4.063-5.863m0 0h13.52m0 0c1.07-.629 1.948-1.596 2.519-2.585" />
+            <Link href="/dashboard/knowledge" className="flex items-center gap-2.5 px-3 py-2 rounded-md text-gray-600 hover:bg-gray-100 hover:text-[#1A1A1A] text-sm font-medium transition-colors">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6.253v13m0-13C6.5 6.253 2 10.998 2 17.001c0 1.295.38 2.531 1.01 3.585L12 18l8.99 2.585c.63-1.054 1.01-2.29 1.01-3.585 0-6.003-4.5-10.748-10-10.748z" />
               </svg>
               Knowledge Base
             </Link>
-
-            {/* Settings Link */}
-            <Link href="/dashboard/settings" className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-300 hover:bg-[#2A2A3E] transition-colors">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            <Link href="/dashboard/settings" className="flex items-center gap-2.5 px-3 py-2 rounded-md text-gray-600 hover:bg-gray-100 hover:text-[#1A1A1A] text-sm font-medium transition-colors">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
               Settings
             </Link>
           </div>
         </nav>
-
         {/* User Profile */}
-        <div className="px-6 py-6 border-t border-[#2A2A3E] flex items-center gap-3">
-          <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold">
-            A
+        <div className="px-5 py-4 border-t border-[#E5E5E5] flex items-center gap-3">
+          <div className="w-8 h-8 bg-gray-200 border border-gray-300 rounded-full flex items-center justify-center text-xs font-semibold text-gray-700">
+            {userEmail ? userEmail.charAt(0).toUpperCase() : "?"}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium truncate">Academy Name</p>
-            <p className="text-xs text-gray-400 truncate">admin@academy.com</p>
+            <p className="text-xs font-medium text-gray-900 truncate">{userEmail || "Loading..."}</p>
           </div>
         </div>
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col overflow-hidden bg-gray-50">
+      <main className="flex-1 flex flex-col overflow-hidden bg-white">
         
         {/* Top Bar */}
-        <div className="bg-white border-b border-gray-200 px-8 py-6 flex justify-between items-center flex-shrink-0 shadow-xs">
-          <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Tickets</h1>
+        <div className="bg-white border-b border-[#E5E5E5] px-8 py-5 flex justify-between items-center flex-shrink-0">
+          <h1 className="text-lg font-semibold tracking-tight text-[#1A1A1A]">Tickets</h1>
           <button
             onClick={() => setIsNewTicketOpen(true)}
-            className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold shadow-xs transition-colors flex items-center gap-2 cursor-pointer"
+            className="px-3.5 py-1.5 bg-[#2563EB] hover:bg-blue-700 text-white rounded-md text-xs font-medium transition-colors shadow-sm cursor-pointer"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
-            </svg>
             + New Ticket
           </button>
         </div>
@@ -218,7 +203,7 @@ export default function TicketsList() {
         <div className="flex-1 overflow-auto px-8 py-8 flex flex-col gap-6">
           
           {/* Filter Bar */}
-          <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-xs flex flex-col md:flex-row gap-4 items-stretch md:items-center">
+          <div className="bg-white p-4 rounded-lg border border-[#E5E5E5] flex flex-col md:flex-row gap-4 items-stretch md:items-center">
             {/* Search Input */}
             <div className="flex-1 relative">
               <input
@@ -226,125 +211,105 @@ export default function TicketsList() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search tickets..."
-                className="w-full pl-10 pr-4 py-2 border border-gray-200 bg-white rounded-lg text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                className="w-full pl-8 pr-8 py-1.5 border border-[#E5E5E5] bg-white rounded-md text-xs text-gray-800 focus:outline-none focus:border-gray-400 transition-all"
               />
-              <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-gray-400">
-                <svg className="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              <div className="absolute inset-y-0 left-2.5 flex items-center pointer-events-none text-gray-400">
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
               </div>
               {search && (
                 <button
                   onClick={() => setSearch('')}
-                  className="absolute inset-y-0 right-3 flex items-center text-gray-400 hover:text-gray-600 transition-colors"
+                  className="absolute inset-y-0 right-2.5 flex items-center text-gray-400 hover:text-gray-600 transition-colors"
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
               )}
             </div>
 
             {/* Status Filter */}
-            <div className="w-full md:w-48 flex flex-col gap-1">
-              <div className="relative">
-                <select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value as any)}
-                  className="w-full pl-3 pr-8 py-2 border border-gray-200 bg-white rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer appearance-none transition-all"
-                >
-                  <option value="All">All Statuses</option>
-                  <option value="Open">Open</option>
-                  <option value="In Progress">In Progress</option>
-                  <option value="Resolved">Resolved</option>
-                </select>
-                <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none text-gray-400">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </div>
-              </div>
+            <div className="w-full md:w-44">
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value as any)}
+                className="w-full px-2.5 py-1.5 border border-[#E5E5E5] bg-white rounded-md text-xs text-gray-700 focus:outline-none cursor-pointer"
+              >
+                <option value="All">All Statuses</option>
+                <option value="Open">Open</option>
+                <option value="In Progress">In Progress</option>
+                <option value="Resolved">Resolved</option>
+              </select>
             </div>
 
             {/* Priority Filter */}
-            <div className="w-full md:w-48 flex flex-col gap-1">
-              <div className="relative">
-                <select
-                  value={priorityFilter}
-                  onChange={(e) => setPriorityFilter(e.target.value as any)}
-                  className="w-full pl-3 pr-8 py-2 border border-gray-200 bg-white rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer appearance-none transition-all"
-                >
-                  <option value="All">All Priorities</option>
-                  <option value="High">High</option>
-                  <option value="Medium">Medium</option>
-                  <option value="Low">Low</option>
-                </select>
-                <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none text-gray-400">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </div>
-              </div>
+            <div className="w-full md:w-44">
+              <select
+                value={priorityFilter}
+                onChange={(e) => setPriorityFilter(e.target.value as any)}
+                className="w-full px-2.5 py-1.5 border border-[#E5E5E5] bg-white rounded-md text-xs text-gray-700 focus:outline-none cursor-pointer"
+              >
+                <option value="All">All Priorities</option>
+                <option value="High">High</option>
+                <option value="Medium">Medium</option>
+                <option value="Low">Low</option>
+              </select>
             </div>
           </div>
 
           {/* Tickets Table Card */}
-          <div className="bg-white rounded-xl border border-gray-200 shadow-xs flex-1 flex flex-col overflow-hidden">
+          <div className="bg-white rounded-lg border border-[#E5E5E5] flex-1 flex flex-col overflow-hidden">
             {/* Table wrapper */}
             <div className="flex-1 overflow-x-auto">
-              <table className="w-full min-w-[700px]">
+              <table className="w-full min-w-[700px] text-left border-collapse">
                 <thead>
-                  <tr className="border-b border-gray-200 bg-slate-50/70">
-                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">ID</th>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Student</th>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Subject</th>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Priority</th>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Date</th>
+                  <tr className="border-b border-[#E5E5E5] bg-[#F7F7F7]">
+                    <th className="px-6 py-2.5 text-xs font-semibold text-gray-500">ID</th>
+                    <th className="px-6 py-2.5 text-xs font-semibold text-gray-500">Student</th>
+                    <th className="px-6 py-2.5 text-xs font-semibold text-gray-500">Subject</th>
+                    <th className="px-6 py-2.5 text-xs font-semibold text-gray-500">Status</th>
+                    <th className="px-6 py-2.5 text-xs font-semibold text-gray-500">Priority</th>
+                    <th className="px-6 py-2.5 text-xs font-semibold text-gray-500">Date</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100">
+                <tbody className="divide-y divide-[#E5E5E5]">
                   {paginatedTickets.length > 0 ? (
                     paginatedTickets.map((ticket) => (
                       <tr
                         key={ticket.id}
                         onClick={() => router.push(`/dashboard/tickets/${ticket.id}`)}
-                        className="hover:bg-slate-50/50 cursor-pointer transition-colors group"
+                        className="hover:bg-[#FAFAFA] cursor-pointer transition-colors text-xs"
                       >
-                        <td className="px-6 py-4 text-sm font-semibold text-blue-600 group-hover:underline">
+                        <td className="px-6 py-3.5 font-medium text-[#2563EB] hover:underline">
                           {ticket.id}
                         </td>
-                        <td className="px-6 py-4 text-sm text-gray-900 font-medium">
+                        <td className="px-6 py-3.5 text-gray-900 font-medium">
                           {ticket.student}
                         </td>
-                        <td className="px-6 py-4 text-sm text-gray-600 max-w-md truncate font-medium">
+                        <td className="px-6 py-3.5 text-gray-600 max-w-md truncate">
                           {ticket.subject}
                         </td>
-                        <td className="px-6 py-4 text-sm">
-                          <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider ${getStatusColor(ticket.status)}`}>
+                        <td className="px-6 py-3.5">
+                          <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-medium border ${getStatusColor(ticket.status)}`}>
                             {ticket.status}
                           </span>
                         </td>
-                        <td className="px-6 py-4 text-sm">
+                        <td className="px-6 py-3.5">
                           <span className={getPriorityColor(ticket.priority)}>
                             {ticket.priority}
                           </span>
                         </td>
-                        <td className="px-6 py-4 text-sm text-gray-500 font-medium">
+                        <td className="px-6 py-3.5 text-gray-500">
                           {ticket.date}
                         </td>
                       </tr>
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={6} className="px-6 py-12 text-center text-sm text-gray-500">
-                        <div className="flex flex-col items-center gap-3">
-                          <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
-                          <p className="font-semibold">No tickets found</p>
-                          <p className="text-xs text-gray-400">Try adjusting your filters or search query.</p>
-                        </div>
+                      <td colSpan={6} className="px-6 py-8 text-center text-xs text-gray-400">
+                        No tickets found matching current filters.
                       </td>
                     </tr>
                   )}
@@ -353,50 +318,47 @@ export default function TicketsList() {
             </div>
 
             {/* Pagination Controls */}
-            <div className="px-6 py-4 bg-slate-50/70 border-t border-gray-200 flex flex-col sm:flex-row justify-between items-center gap-4 flex-shrink-0">
-              <p className="text-sm text-gray-600">
+            <div className="px-6 py-3 bg-[#F7F7F7] border-t border-[#E5E5E5] flex flex-col sm:flex-row justify-between items-center gap-4 flex-shrink-0 text-xs text-gray-500">
+              <p>
                 Showing{' '}
-                <span className="font-semibold">
+                <span className="font-medium text-gray-700">
                   {filteredTickets.length > 0 ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0}
                 </span>{' '}
                 to{' '}
-                <span className="font-semibold">
+                <span className="font-medium text-gray-700">
                   {Math.min(currentPage * ITEMS_PER_PAGE, filteredTickets.length)}
                 </span>{' '}
-                of <span className="font-semibold">{filteredTickets.length}</span> tickets
+                of <span className="font-medium text-gray-700">{filteredTickets.length}</span> tickets
               </p>
 
               {totalPages > 1 && (
                 <div className="flex items-center gap-1">
-                  {/* Previous Button */}
                   <button
                     onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                     disabled={currentPage === 1}
-                    className="px-3 py-1.5 text-xs font-semibold text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 hover:text-gray-900 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                    className="px-2.5 py-1 text-[11px] font-medium text-gray-600 bg-white border border-[#E5E5E5] rounded hover:bg-gray-50 disabled:opacity-50 cursor-pointer"
                   >
                     Previous
                   </button>
 
-                  {/* Page Numbers */}
                   {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
                     <button
                       key={page}
                       onClick={() => setCurrentPage(page)}
-                      className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors cursor-pointer ${
+                      className={`px-2.5 py-1 text-[11px] font-medium rounded transition-colors cursor-pointer ${
                         currentPage === page
-                          ? 'bg-blue-600 text-white shadow-xs'
-                          : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50 hover:text-gray-900'
+                          ? 'bg-[#2563EB] text-white'
+                          : 'bg-white text-gray-600 border border-[#E5E5E5] hover:bg-gray-50'
                       }`}
                     >
                       {page}
                     </button>
                   ))}
 
-                  {/* Next Button */}
                   <button
                     onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                     disabled={currentPage === totalPages}
-                    className="px-3 py-1.5 text-xs font-semibold text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 hover:text-gray-900 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                    className="px-2.5 py-1 text-[11px] font-medium text-gray-600 bg-white border border-[#E5E5E5] rounded hover:bg-gray-50 disabled:opacity-50 cursor-pointer"
                   >
                     Next
                   </button>
@@ -408,122 +370,93 @@ export default function TicketsList() {
       </main>
 
       {/* Slide-over New Ticket Panel */}
-      <div className={`fixed inset-0 z-50 overflow-hidden transition-all duration-300 ${
-        isNewTicketOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
-      }`}>
-        {/* Backdrop */}
-        <div
-          onClick={() => setIsNewTicketOpen(false)}
-          className="absolute inset-0 bg-slate-950/40 backdrop-blur-xs transition-opacity duration-300"
-        />
+      {isNewTicketOpen && (
+        <div className="fixed inset-0 z-50 overflow-hidden flex justify-end">
+          {/* Backdrop */}
+          <div
+            onClick={() => setIsNewTicketOpen(false)}
+            className="absolute inset-0 bg-slate-950/20 backdrop-blur-xxs transition-opacity"
+          />
 
-        {/* Panel Wrapper */}
-        <div className="absolute inset-y-0 right-0 max-w-full flex pl-10">
-          <div className={`w-screen max-w-md bg-white shadow-2xl border-l border-gray-100 flex flex-col justify-between transform transition-transform duration-300 ease-in-out ${
-            isNewTicketOpen ? 'translate-x-0' : 'translate-x-full'
-          }`}>
+          {/* Panel Wrapper */}
+          <div className="relative w-full max-w-md bg-white border-l border-[#E5E5E5] flex flex-col justify-between h-full shadow-lg">
             {/* Header */}
-            <div className="px-6 py-5 bg-slate-50 border-b border-gray-100 flex items-center justify-between">
+            <div className="px-6 py-4 border-b border-[#E5E5E5] bg-[#F7F7F7] flex items-center justify-between">
               <div>
-                <h2 className="text-lg font-bold text-gray-900 tracking-tight">Create Support Ticket</h2>
-                <p className="text-xs text-gray-500 mt-0.5">Add a new inquiry record into the system.</p>
+                <h2 className="text-sm font-semibold text-gray-900">Create Support Ticket</h2>
               </div>
               <button
                 onClick={() => setIsNewTicketOpen(false)}
-                className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-all cursor-pointer"
+                className="text-gray-400 hover:text-gray-600 cursor-pointer"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                <svg className="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
             </div>
 
             {/* Form Fields */}
-            <form onSubmit={handleCreateTicket} className="flex-1 overflow-y-auto p-6 space-y-5">
-              {/* Student Name */}
-              <div className="flex flex-col gap-1.5">
-                <label htmlFor="new-student-name" className="text-xs font-bold text-gray-400 uppercase tracking-wider">
-                  Student Name
-                </label>
+            <form onSubmit={handleCreateTicket} className="flex-1 overflow-y-auto p-6 space-y-4">
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">Student Name</label>
                 <input
-                  id="new-student-name"
                   type="text"
                   required
                   value={newStudent}
                   onChange={(e) => setNewStudent(e.target.value)}
                   placeholder="e.g. John Doe"
-                  className="px-3.5 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                  className="px-3 py-2 border border-[#E5E5E5] rounded-md text-xs text-gray-800 focus:outline-none focus:border-gray-400"
                 />
               </div>
 
-              {/* Student Email */}
-              <div className="flex flex-col gap-1.5">
-                <label htmlFor="new-student-email" className="text-xs font-bold text-gray-400 uppercase tracking-wider">
-                  Email Address
-                </label>
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">Email Address</label>
                 <input
-                  id="new-student-email"
                   type="email"
                   required
                   value={newEmail}
                   onChange={(e) => setNewEmail(e.target.value)}
                   placeholder="e.g. john.doe@email.com"
-                  className="px-3.5 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                  className="px-3 py-2 border border-[#E5E5E5] rounded-md text-xs text-gray-800 focus:outline-none focus:border-gray-400"
                 />
               </div>
 
-              {/* Subject */}
-              <div className="flex flex-col gap-1.5">
-                <label htmlFor="new-ticket-subject" className="text-xs font-bold text-gray-400 uppercase tracking-wider">
-                  Ticket Subject
-                </label>
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">Ticket Subject</label>
                 <input
-                  id="new-ticket-subject"
                   type="text"
                   required
                   value={newSubject}
                   onChange={(e) => setNewSubject(e.target.value)}
-                  placeholder="e.g. Course access Pending verification"
-                  className="px-3.5 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                  placeholder="e.g. Module 3 is not loading"
+                  className="px-3 py-2 border border-[#E5E5E5] rounded-md text-xs text-gray-800 focus:outline-none focus:border-gray-400"
                 />
               </div>
 
-              {/* Priority Dropdown */}
-              <div className="flex flex-col gap-1.5">
-                <label htmlFor="new-ticket-priority" className="text-xs font-bold text-gray-400 uppercase tracking-wider">
-                  Priority level
-                </label>
-                <div className="relative">
-                  <select
-                    id="new-ticket-priority"
-                    value={newPriority}
-                    onChange={(e) => setNewPriority(e.target.value as any)}
-                    className="w-full pl-3 pr-8 py-2.5 bg-white border border-gray-200 rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer appearance-none transition-all"
-                  >
-                    <option value="High">High</option>
-                    <option value="Medium">Medium</option>
-                    <option value="Low">Low</option>
-                  </select>
-                  <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none text-gray-400">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </div>
-                </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">Priority Level</label>
+                <select
+                  value={newPriority}
+                  onChange={(e) => setNewPriority(e.target.value as any)}
+                  className="w-full px-2.5 py-2 border border-[#E5E5E5] bg-white rounded-md text-xs text-gray-700 focus:outline-none cursor-pointer"
+                >
+                  <option value="High">High</option>
+                  <option value="Medium">Medium</option>
+                  <option value="Low">Low</option>
+                </select>
               </div>
 
-              {/* Action Buttons */}
               <div className="pt-4 flex gap-3">
                 <button
                   type="button"
                   onClick={() => setIsNewTicketOpen(false)}
-                  className="flex-1 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-semibold rounded-lg shadow-xs transition-colors cursor-pointer text-center"
+                  className="flex-1 py-2 border border-[#E5E5E5] text-gray-700 text-xs font-medium rounded-md hover:bg-gray-50 cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg shadow-xs transition-colors cursor-pointer text-center"
+                  className="flex-1 py-2 bg-[#2563EB] hover:bg-blue-700 text-white text-xs font-medium rounded-md cursor-pointer"
                 >
                   Create Ticket
                 </button>
@@ -531,22 +464,15 @@ export default function TicketsList() {
             </form>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Floating success toast */}
-      <div className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 bg-slate-900 text-white px-5 py-3.5 rounded-xl shadow-2xl border border-slate-800 transition-all duration-300 transform ${
-        showToast ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0 pointer-events-none'
-      }`}>
-        <div className="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center text-white flex-shrink-0">
-          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-          </svg>
+      {showToast && (
+        <div className="fixed bottom-6 right-6 z-50 bg-[#1A1A1A] text-white px-4 py-3 rounded-lg border border-gray-800 shadow-lg text-xs flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+          <span>{toastMessage || "Ticket created successfully"}</span>
         </div>
-        <div className="flex flex-col">
-          <p className="text-sm font-semibold">Ticket Created</p>
-          <p className="text-xs text-slate-400">The support ticket has been added successfully.</p>
-        </div>
-      </div>
+      )}
     </div>
   );
 }
