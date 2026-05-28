@@ -196,7 +196,7 @@ export default function TicketsList() {
             onClick={() => setIsNewTicketOpen(true)}
             className="px-3.5 py-1.5 bg-[#2563EB] hover:bg-blue-700 text-white rounded-md text-xs font-medium transition-colors shadow-sm cursor-pointer"
           >
-            + New Ticket
+             New Ticket
           </button>
         </div>
 
