@@ -1,11 +1,88 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, ReactNode } from 'react';
 import Link from 'next/link';
 
 interface Message {
   role: 'user' | 'assistant';
   content: string;
+}
+
+/**
+ * Renders a markdown string into React elements.
+ * Supports: **bold**, `inline code`, numbered lists, bullet lists, paragraphs.
+ */
+function renderMarkdown(text: string): ReactNode {
+  // Split into blocks by double newline (paragraphs / list groups)
+  const blocks = text.split(/\n{2,}/);
+
+  return blocks.map((block, bIdx) => {
+    const trimmed = block.trim();
+    if (!trimmed) return null;
+
+    // Detect ordered list block (lines starting with "1." "2." etc.)
+    const orderedListMatch = trimmed.match(/^(\d+)\./m);
+    const isOrderedList = orderedListMatch && trimmed.split('\n').every(l => /^\d+\.\s/.test(l.trim()) || l.trim() === '');
+    if (isOrderedList) {
+      const items = trimmed.split('\n').filter(l => /^\d+\.\s/.test(l.trim()));
+      return (
+        <ol key={bIdx} style={{ margin: '8px 0', paddingLeft: '20px', listStyleType: 'decimal' }}>
+          {items.map((item, i) => (
+            <li key={i} style={{ marginBottom: '4px' }}>{renderInline(item.replace(/^\d+\.\s*/, ''))}</li>
+          ))}
+        </ol>
+      );
+    }
+
+    // Detect unordered list block (lines starting with "- " or "• ")
+    const isUnorderedList = trimmed.split('\n').every(l => /^[-•*]\s/.test(l.trim()) || l.trim() === '');
+    if (isUnorderedList) {
+      const items = trimmed.split('\n').filter(l => /^[-•*]\s/.test(l.trim()));
+      return (
+        <ul key={bIdx} style={{ margin: '8px 0', paddingLeft: '20px', listStyleType: 'disc' }}>
+          {items.map((item, i) => (
+            <li key={i} style={{ marginBottom: '4px' }}>{renderInline(item.replace(/^[-•*]\s*/, ''))}</li>
+          ))}
+        </ul>
+      );
+    }
+
+    // Regular paragraph — may contain single newlines within
+    const lines = trimmed.split('\n');
+    return (
+      <p key={bIdx} style={{ margin: '6px 0' }}>
+        {lines.map((line, lIdx) => (
+          <span key={lIdx}>
+            {lIdx > 0 && <br />}
+            {renderInline(line)}
+          </span>
+        ))}
+      </p>
+    );
+  });
+}
+
+/** Renders inline markdown: **bold**, `code` */
+function renderInline(text: string): ReactNode {
+  // Split on **bold** and `code` patterns
+  const parts = text.split(/(\*\*[^*]+\*\*|`[^`]+`)/g);
+  return parts.map((part, i) => {
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return <strong key={i}>{part.slice(2, -2)}</strong>;
+    }
+    if (part.startsWith('`') && part.endsWith('`')) {
+      return (
+        <code key={i} style={{
+          background: '#E5E7EB',
+          padding: '1px 5px',
+          borderRadius: '4px',
+          fontSize: '12px',
+          fontFamily: 'ui-monospace, monospace',
+        }}>{part.slice(1, -1)}</code>
+      );
+    }
+    return part;
+  });
 }
 
 export default function ChatPage() {
@@ -119,13 +196,13 @@ export default function ChatPage() {
                 padding: '10px 14px', 
                 borderRadius: '8px', 
                 fontSize: '13px', 
-                lineHeight: '1.5',
+                lineHeight: '1.6',
                 border: '1px solid',
                 backgroundColor: isUser ? '#EFF6FF' : '#F7F7F7',
                 color: isUser ? '#1E40AF' : '#1A1A1A',
                 borderColor: isUser ? '#BFDBFE' : '#E5E5E5',
               }}>
-                {msg.content}
+                {isUser ? msg.content : renderMarkdown(msg.content)}
               </div>
             </div>
           );

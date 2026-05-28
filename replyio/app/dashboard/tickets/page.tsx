@@ -44,6 +44,7 @@ export default function TicketsList() {
   const [newSubject, setNewSubject] = useState('');
   const [newPriority, setNewPriority] = useState<'High' | 'Medium' | 'Low'>('Medium');
   const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
   const [userEmail, setUserEmail] = useState<string>("");
 
   useEffect(() => {
