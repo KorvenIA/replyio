@@ -36,6 +36,13 @@ export default function TicketDetail() {
   const [ticketPriority, setTicketPriority] = useState('high');
   const [userEmail, setUserEmail] = useState<string>("");
 
+  const [showPreview, setShowPreview] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [draftSubject, setDraftSubject] = useState('');
+  const [draftMessage, setDraftMessage] = useState('');
+  const [draftTo, setDraftTo] = useState('');
+  const [isSending, setIsSending] = useState(false);
+
   useEffect(() => {
     const getUser = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -90,6 +97,59 @@ export default function TicketDetail() {
         setMessages([...messages, data]);
         setReplyText('');
       }
+    }
+  };
+
+  const handleGenerateDraft = async () => {
+    if (!replyText.trim() || !ticket) return;
+    setIsGenerating(true);
+    try {
+      const res = await fetch('/api/email-draft', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          replyText,
+          studentName: ticket.student_name,
+          studentEmail: ticket.student_email
+        })
+      });
+      const data = await res.json();
+      setDraftSubject(data.subject);
+      setDraftMessage(data.message);
+      setDraftTo(data.to);
+      setShowPreview(true);
+    } catch (e) {
+      alert('Error generating draft');
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const handleSendEmail = async () => {
+    if (!ticket) return;
+    setIsSending(true);
+    try {
+      const res = await fetch('/api/send-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to: draftTo,
+          subject: draftSubject,
+          message: draftMessage,
+          ticketNumber: ticket.ticket_number
+        })
+      });
+      if (res.ok) {
+        alert('Email sent successfully!');
+        setShowPreview(false);
+        setReplyText('');
+      } else {
+        alert('Error sending email');
+      }
+    } catch (e) {
+      alert('Error sending email');
+    } finally {
+      setIsSending(false);
     }
   };
 
@@ -230,7 +290,14 @@ export default function TicketDetail() {
                 className="w-full px-3 py-2 border border-[#E5E5E5] rounded-md focus:outline-none focus:border-gray-400 resize-none text-xs"
                 rows={3}
               />
-              <div className="flex justify-end mt-3">
+              <div className="flex justify-between mt-3">
+                <button
+                  onClick={handleGenerateDraft}
+                  disabled={isGenerating || !replyText.trim()}
+                  className="px-3.5 py-1.5 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white rounded-md text-xs font-medium transition-colors flex items-center gap-2"
+                >
+                  {isGenerating ? 'Generating...' : 'Generate Email Draft with AI'}
+                </button>
                 <button
                   onClick={handleSendReply}
                   className="px-3.5 py-1.5 bg-[#2563EB] hover:bg-blue-700 text-white rounded-md text-xs font-medium transition-colors"
@@ -299,6 +366,63 @@ export default function TicketDetail() {
           </div>
         </div>
       </main>
+
+      {/* Preview Modal */}
+      {showPreview && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl w-[500px] max-w-[90vw] p-6">
+            <h3 className="text-lg font-semibold mb-4 text-gray-900">Email Draft Preview</h3>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">To</label>
+                <input
+                  type="email"
+                  value={draftTo}
+                  onChange={(e) => setDraftTo(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Subject</label>
+                <input
+                  type="text"
+                  value={draftSubject}
+                  onChange={(e) => setDraftSubject(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Message</label>
+                <textarea
+                  value={draftMessage}
+                  onChange={(e) => setDraftMessage(e.target.value)}
+                  rows={6}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 mt-6">
+              <button
+                onClick={() => setShowPreview(false)}
+                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-md text-sm font-medium transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSendEmail}
+                disabled={isSending}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium transition-colors disabled:opacity-50"
+              >
+                {isSending ? 'Sending...' : 'Send Email'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
