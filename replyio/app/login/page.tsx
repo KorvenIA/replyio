@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
+import { createClient } from '@/lib/supabase'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -10,6 +10,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const supabase = createClient()
 
   const handleLogin = async () => {
     setLoading(true)
@@ -28,6 +29,7 @@ export default function LoginPage() {
       return
     }
 
+    await new Promise(resolve => setTimeout(resolve, 500))
     window.location.href = '/dashboard'
   }
 

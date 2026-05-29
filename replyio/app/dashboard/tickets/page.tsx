@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { supabase } from "@/lib/supabase";
+import { createClient } from "@/lib/supabase";
 
 interface Ticket {
   id: string;
@@ -29,6 +29,7 @@ const initialTickets: Ticket[] = [
 ];
 
 export default function TicketsList() {
+  const supabase = createClient();
   const router = useRouter();
 
   const [tickets, setTickets] = useState<Ticket[]>(initialTickets);

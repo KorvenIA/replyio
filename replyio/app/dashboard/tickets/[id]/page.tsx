@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { supabase } from "@/lib/supabase";
+import { createClient } from "@/lib/supabase";
 
 export default function TicketDetail() {
+  const supabase = createClient();
   const [messages, setMessages] = useState([
     { id: 1, author: 'Sarah Johnson', type: 'student', content: 'Hi, I\'ve been trying to access the course materials for Module 3, but I keep getting an error. Can you help me?', timestamp: '2 hours ago' },
     { id: 2, author: 'Academy Support', type: 'academy', content: 'Hi Sarah! Thanks for reaching out. Can you tell me what error message you\'re seeing? This will help me diagnose the issue faster.', timestamp: '1.5 hours ago' },

@@ -3,9 +3,10 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { supabase } from "@/lib/supabase";
+import { createClient } from "@/lib/supabase";
 
 export default function Settings() {
+  const supabase = createClient();
   const router = useRouter();
 
   const [academyName, setAcademyName] = useState('Academy Name');

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { supabase } from "@/lib/supabase";
+import { createClient } from "@/lib/supabase";
 
 interface DocumentFile {
   id: string;
@@ -25,6 +25,7 @@ const initialDocuments: DocumentFile[] = [
 ];
 
 export default function KnowledgeBase() {
+  const supabase = createClient();
   const [documents, setDocuments] = useState<DocumentFile[]>(initialDocuments);
   const [lastUpdated, setLastUpdated] = useState('Today');
   const [isUploadOpen, setIsUploadOpen] = useState(false);

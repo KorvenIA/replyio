@@ -3,7 +3,7 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import { supabase } from "@/lib/supabase";
+import { createClient } from "@/lib/supabase";
 
 interface Ticket {
   ticket_number: string;
@@ -15,6 +15,7 @@ interface Ticket {
 }
 
 export default function Dashboard() {
+  const supabase = createClient();
   const [loading, setLoading] = useState(true);
   const [openCount, setOpenCount] = useState<string>("0");
   const [resolvedTodayCount, setResolvedTodayCount] = useState<string>("0");
