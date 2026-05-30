@@ -85,11 +85,97 @@ function renderInline(text: string): ReactNode {
   });
 }
 
+function BotMessage({ content, ticketId }: { content: string, ticketId?: string }) {
+  const [rating, setRating] = useState(0);
+  const [hoverRating, setHoverRating] = useState(0);
+  const [comment, setComment] = useState('');
+  const [submitted, setSubmitted] = useState(false);
+  const [showCommentInput, setShowCommentInput] = useState(false);
+
+  const handleSubmit = async () => {
+    if (rating === 0) return;
+    setSubmitted(true);
+    try {
+      await fetch('/api/ratings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          rating,
+          comment,
+          ticketId,
+          ratingType: 'bot_response'
+        })
+      });
+    } catch (e) {
+      console.error('Error submitting rating');
+    }
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+      <div style={{ 
+        maxWidth: '100%', 
+        padding: '10px 14px', 
+        borderRadius: '8px', 
+        fontSize: '13px', 
+        lineHeight: '1.6',
+        border: '1px solid #E5E5E5',
+        backgroundColor: '#F7F7F7',
+        color: '#1A1A1A',
+      }}>
+        {renderMarkdown(content)}
+      </div>
+
+      {!submitted ? (
+        <div style={{ marginTop: '8px', padding: '10px', background: '#FAFAFA', border: '1px solid #E5E5E5', borderRadius: '8px', width: '100%', maxWidth: '320px', boxSizing: 'border-box' }}>
+          <p style={{ fontSize: '11px', color: '#666', marginBottom: '6px', fontWeight: '500' }}>Rate this response:</p>
+          <div style={{ display: 'flex', gap: '4px', cursor: 'pointer', marginBottom: showCommentInput ? '8px' : '0' }}>
+            {[1, 2, 3, 4, 5].map((star) => (
+              <span 
+                key={star}
+                onMouseEnter={() => setHoverRating(star)}
+                onMouseLeave={() => setHoverRating(0)}
+                onClick={() => { setRating(star); setShowCommentInput(true); }}
+                style={{ fontSize: '20px', color: star <= (hoverRating || rating) ? '#F59E0B' : '#E5E7EB', lineHeight: '1' }}
+              >
+                ★
+              </span>
+            ))}
+          </div>
+          {showCommentInput && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <input 
+                type="text"
+                placeholder="Add a comment (optional)"
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                style={{ width: '100%', padding: '8px', fontSize: '12px', border: '1px solid #E5E5E5', borderRadius: '6px', boxSizing: 'border-box', outline: 'none' }}
+              />
+              <button 
+                onClick={handleSubmit}
+                style={{ alignSelf: 'flex-start', padding: '6px 12px', fontSize: '11px', background: '#2563EB', color: '#FFF', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: '500' }}
+              >
+                Submit Rating
+              </button>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div style={{ marginTop: '8px', fontSize: '11px', color: '#10B981', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '4px' }}>
+          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+          Thanks for your feedback!
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function ChatPage() {
   const [studentName, setStudentName] = useState('');
   const [studentEmail, setStudentEmail] = useState('');
   const [hasStarted, setHasStarted] = useState(false);
   const [ticketCreatedMessage, setTicketCreatedMessage] = useState('');
+  const [createdTicketId, setCreatedTicketId] = useState<string | undefined>();
   const [creatingTicket, setCreatingTicket] = useState(false);
 
   const [messages, setMessages] = useState<Message[]>([
@@ -121,6 +207,7 @@ export default function ChatPage() {
       });
       const data = await response.json();
       if (response.ok) {
+        setCreatedTicketId(data.ticket.ticket_number);
         setTicketCreatedMessage(`Ticket [${data.ticket.ticket_number}] created successfully. The academy will contact you at ${studentEmail}`);
       } else {
         alert('Failed to create ticket: ' + data.error);
@@ -262,7 +349,7 @@ export default function ChatPage() {
             boxSizing: 'border-box',
             display: 'flex',
             flexDirection: 'column',
-            gap: '16px'
+            gap: '24px' // increased gap for rating boxes
           }}>
             {messages.map((msg, index) => {
               const isUser = msg.role === 'user';
@@ -270,41 +357,50 @@ export default function ChatPage() {
                 <div key={index} style={{ 
                   display: 'flex', 
                   flexDirection: 'column',
-                  alignItems: isUser ? 'flex-end' : 'flex-start' 
+                  alignItems: isUser ? 'flex-end' : 'flex-start',
+                  width: '100%'
                 }}>
-                  <div style={{ 
-                    maxWidth: '80%', 
-                    padding: '10px 14px', 
-                    borderRadius: '8px', 
-                    fontSize: '13px', 
-                    lineHeight: '1.6',
-                    border: '1px solid',
-                    backgroundColor: isUser ? '#EFF6FF' : '#F7F7F7',
-                    color: isUser ? '#1E40AF' : '#1A1A1A',
-                    borderColor: isUser ? '#BFDBFE' : '#E5E5E5',
-                  }}>
-                    {isUser ? msg.content : renderMarkdown(msg.content)}
-                  </div>
-                  
-                  {/* Create Ticket Button below bot messages */}
-                  {!isUser && !ticketCreatedMessage && (
-                    <button 
-                      onClick={handleCreateTicket}
-                      disabled={creatingTicket}
-                      style={{
-                        marginTop: '8px',
-                        background: 'none',
-                        border: 'none',
-                        color: '#2563EB',
-                        fontSize: '12px',
-                        fontWeight: '500',
-                        cursor: 'pointer',
-                        padding: '4px 8px',
-                        borderRadius: '4px',
-                      }}
-                    >
-                      {creatingTicket ? 'Creating...' : 'I still need help → Create Ticket'}
-                    </button>
+                  {isUser ? (
+                    <div style={{ 
+                      maxWidth: '80%', 
+                      padding: '10px 14px', 
+                      borderRadius: '8px', 
+                      fontSize: '13px', 
+                      lineHeight: '1.6',
+                      border: '1px solid #BFDBFE',
+                      backgroundColor: '#EFF6FF',
+                      color: '#1E40AF',
+                    }}>
+                      {msg.content}
+                    </div>
+                  ) : (
+                    <div style={{ maxWidth: '80%' }}>
+                      <BotMessage content={msg.content} ticketId={createdTicketId} />
+                      
+                      {/* Create Ticket Button below bot messages, only on last message if no ticket yet */}
+                      {index === messages.length - 1 && !ticketCreatedMessage && (
+                        <button 
+                          onClick={handleCreateTicket}
+                          disabled={creatingTicket}
+                          style={{
+                            marginTop: '12px',
+                            background: 'none',
+                            border: '1px solid #E5E5E5',
+                            color: '#2563EB',
+                            fontSize: '11px',
+                            fontWeight: '600',
+                            cursor: 'pointer',
+                            padding: '6px 12px',
+                            borderRadius: '6px',
+                            transition: 'all 0.2s',
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#F8FAFC'}
+                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                        >
+                          {creatingTicket ? 'Creating...' : 'I still need help → Create Ticket'}
+                        </button>
+                      )}
+                    </div>
                   )}
                 </div>
               );
